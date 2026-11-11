@@ -111,18 +111,18 @@ img { display: block; max-width: 100%; }
 .c-names { margin: 4cqw 0 0; font: 400 15.5cqw/.98 var(--script); display: flex; flex-direction: column; align-items: center; }
 .c-names i { font-style: normal; font-size: 8.5cqw; line-height: 1.15; }
 .rule { width: 14cqw; height: 1px; background: var(--gold); margin: 5cqw 0 4.5cqw; opacity: .7; }
-.c-date { font: 500 3cqw/1.9 var(--display); letter-spacing: .16em; text-transform: uppercase; margin: 0; }
-.c-venue { font: 500 3.7cqw/1.3 var(--display); letter-spacing: .2em; text-transform: uppercase; margin: 3cqw 0 0; }
+.c-date { font: 500 3cqw/1.9 var(--display); letter-spacing: .16em; padding-left: .16em; text-transform: uppercase; margin: 0; }
+.c-venue { font: 500 3.4cqw/1.3 var(--display); letter-spacing: .16em; padding-left: .16em; text-transform: uppercase; margin: 3cqw 0 0; }
 .c-reply { font: italic 500 3.6cqw/1.3 var(--text); margin: 3.2cqw 0 0; color: var(--muted); }
 
 /* Photo strip: a printed booth strip with a piece of tape */
 .strip {
-  --S: calc(var(--E) * .26);
+  --S: calc(var(--E) * .23);
   position: absolute; left: 50%; top: 50%; width: var(--S); z-index: 2;
   padding: calc(var(--S) * .178) calc(var(--S) * .089) calc(var(--S) * .25);
   background-color: #F8F4EB; background-image: var(--grain), var(--mottle);
   box-shadow: 0 1px 1px rgba(50,30,25,.3), 0 4px 8px -2px rgba(50,30,25,.25), 0 16px 26px -10px rgba(50, 30, 25, .5);
-  transform: translate(-50%, -50%) translate(calc(var(--E) * .395), 0) rotate(3deg); opacity: 0;
+  transform: translate(-50%, -50%) translate(calc(var(--E) * .355), 0) rotate(2deg); opacity: 0;
   transition: transform 1.2s cubic-bezier(.2, .8, .25, 1), opacity .5s ease;
 }
 .ph { position: relative; display: block; margin-bottom: calc(var(--S) * .067); background: var(--beige); overflow: hidden; box-shadow: inset 0 0 0 .3px rgba(0,0,0,.4); }
@@ -140,8 +140,8 @@ img { display: block; max-width: 100%; }
 .fl.b { left: 0cqw; top: 9cqw; width: 33cqw; transform-origin: 50% 100%; transform: scale(.5) rotate(-8deg); z-index: 6; }
 
 .open .flap { transform: rotateX(180deg); z-index: 1; }
-.up .card { transform: translate(-50%, -50%) translate(calc(var(--E) * -.035), calc(var(--E) * -.40)) scale(.97); transition-duration: 1.5s; }
-.out .strip { opacity: 1; transform: translate(-50%, -50%) translate(calc(var(--E) * .395), calc(var(--E) * -.27)) rotate(6deg); }
+.up .card { transform: translate(-50%, -50%) translate(0, calc(var(--E) * -.40)) scale(.97); transition-duration: 1.5s; }
+.out .strip { opacity: 1; transform: translate(-50%, -50%) translate(calc(var(--E) * .355), calc(var(--E) * -.36)) rotate(4deg); }
 .out .fl { opacity: 1; transform: none; }
 
 .go {
@@ -227,7 +227,7 @@ img { display: block; max-width: 100%; }
     <pattern id="mesh" width="2.2" height="2.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0,0 H2.2 M0,0 V2.2" stroke="#B9838C" stroke-width=".18" stroke-opacity=".45" fill="none"/></pattern>
     <filter id="emb" x="-5%" y="-5%" width="110%" height="110%"><feDropShadow dx="0" dy=".7" stdDeviation=".6" flood-color="#C9C2BB" flood-opacity=".9"/></filter>
     <filter id="soft" x="-10%" y="-20%" width="120%" height="140%"><feGaussianBlur stdDeviation="1.6"/></filter>
-    <filter id="lsh" x="-5%" y="-10%" width="110%" height="130%"><feDropShadow dx="0" dy=".9" stdDeviation=".7" flood-color="#4A2430" flood-opacity=".4"/></filter>
+    <filter id="lsh" x="-5%" y="-10%" width="110%" height="130%"><feDropShadow dx="0" dy=".9" stdDeviation=".7" flood-color="#4A2430" flood-opacity=".5"/></filter>
     <linearGradient id="gL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C28C95"/><stop offset="1" stop-color="#CA9AA1"/></linearGradient>
     <linearGradient id="gR" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#C28C95"/><stop offset="1" stop-color="#CA9AA1"/></linearGradient>
     <linearGradient id="gB" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#B67F89"/><stop offset="1" stop-color="#C48E97"/></linearGradient>
@@ -273,7 +273,6 @@ img { display: block; max-width: 100%; }
         <path d="M0 200 L150 110 L300 200" fill="none" stroke="#E8C3C9" stroke-opacity=".35" stroke-width=".6" transform="translate(0 .9)"/>
         <path d="M0 3 L150 113 L300 3" fill="none" stroke="#4A2430" stroke-opacity=".4" stroke-width="5" filter="url(#soft)"/>
         <rect width="300" height="200" filter="url(#pg)" opacity=".55" clip-path="url(#cP)"/>
-        <rect x=".4" y=".4" width="299.2" height="199.2" fill="none" stroke="#8E5A64" stroke-opacity=".25" stroke-width=".8"/>
       </svg>
     </div>
 
