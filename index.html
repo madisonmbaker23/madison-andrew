@@ -161,7 +161,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
 .foot { background: var(--espresso); color: var(--beige); text-align: center; padding: 8px 0 56px; }
 .foot .script { color: var(--ivory); font-size: 2.6rem; }
 .foot p { margin: 8px 0 0; font-size: 1.1rem; font-style: italic; }
-.foot .mono { font: 400 3.4rem/1 var(--script); color: var(--gold); display: block; margin-bottom: 10px; }
+.foot .mono { display: block; width: 96px; height: auto; margin: 0 auto 18px; }
 
 @media (max-width: 800px) {
   .details { grid-template-columns: 1fr; }
@@ -311,7 +311,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
 
 <footer class="foot">
   <div class="wrap">
-    <span class="mono" aria-hidden="true">C</span>
+    <img class="mono" src="img/monogram.png" alt="" width="96" height="75" loading="lazy">
     <p class="script">Madison &amp; Andrew</p>
   </div>
 </footer>
