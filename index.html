@@ -157,6 +157,18 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
 .tick { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--olive); color: var(--olive); display: grid; place-items: center; margin-bottom: 16px; font: 500 1.3rem/1 var(--display); }
 .summary { border-top: 1px solid var(--beige); border-bottom: 1px solid var(--beige); padding: 14px 0; margin: 18px 0 26px; font-size: 1.2rem; }
 
+/* Phone: center the contents of the RSVP card */
+@media (max-width: 520px) {
+  .card { padding: 32px 22px; }
+  #done { text-align: center; }
+  #findForm .field { text-align: center; }
+  #findForm input[type=text] { text-align: center; }
+  .card .btn { width: 100%; text-align: center; }
+  .card .actions { flex-direction: column; align-items: stretch; }
+  .card .actions .btn { flex: none; max-width: none; }
+  .tick { margin-inline: auto; }
+}
+
 /* Footer */
 .foot { background: var(--espresso); color: var(--beige); text-align: center; padding: 8px 0 56px; }
 .foot .script { color: var(--ivory); font-size: 2.6rem; }
