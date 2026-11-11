@@ -145,7 +145,10 @@ input[type=text], select, textarea {
   padding: 10px 0; font: 500 1.3rem/1.4 var(--text); color: var(--espresso); appearance: none;
 }
 select { background-image: linear-gradient(45deg, transparent 50%, var(--espresso) 50%), linear-gradient(135deg, var(--espresso) 50%, transparent 50%); background-position: calc(100% - 12px) 55%, calc(100% - 6px) 55%; background-size: 6px 6px; background-repeat: no-repeat; }
-#nameList input { display: block; margin-top: 10px; }
+#nameList .seat { margin-top: 18px; }
+#nameList input[type=text] { display: block; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.seg .choice span { padding: 11px 8px; font-size: 1.08rem; }
 textarea { resize: vertical; min-height: 84px; }
 input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: var(--espresso); box-shadow: 0 1px 0 var(--espresso); }
 .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
@@ -285,20 +288,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
         <!-- Step 2: respond -->
         <form id="respForm" novalidate hidden>
           <h3 id="hello">Welcome</h3>
-          <p class="note">Please let us know whether you can join us.</p>
+          <p class="note">Please let us know who can join us.</p>
           <div class="field">
-            <span class="lbl" id="attLbl">Will you attend?</span>
-            <div class="choices" role="radiogroup" aria-labelledby="attLbl">
-              <label class="choice"><input type="radio" name="attend" id="attYes" value="yes"><span>Joyfully accepts</span></label>
-              <label class="choice"><input type="radio" name="attend" id="attNo" value="no"><span>Regretfully declines</span></label>
-            </div>
+            <span class="lbl" id="whoLbl">Who can make it</span>
+            <p class="note" id="whoHint" style="margin:6px 0 0">Choose Coming or Can&rsquo;t make it for each person on your invitation. If you are bringing a guest, add their name.</p>
+            <div id="nameList" role="group" aria-labelledby="whoLbl"></div>
           </div>
           <div id="yesFields" hidden>
-            <div class="field">
-              <span class="lbl" id="whoLbl">Who will be attending</span>
-              <p class="note" id="whoHint" style="margin:6px 0 0">Leave a line blank if that person cannot make it.</p>
-              <div id="nameList" role="group" aria-labelledby="whoLbl"></div>
-            </div>
             <div class="field">
               <label for="diet">Allergies or dietary needs</label>
               <input type="text" id="diet" name="diet" maxlength="300">
@@ -488,14 +484,27 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
     $('hello').textContent = 'Welcome, ' + g.household;
     var nl = $('nameList'); nl.innerHTML = '';
     for (var i = 0; i < g.max; i++) {
+      var seat = document.createElement('div'); seat.className = 'seat';
       var inp = document.createElement('input');
       inp.type = 'text'; inp.maxLength = 80; inp.autocomplete = 'off'; inp.id = 'guestName' + i;
       inp.value = (g.names && g.names[i]) || '';
       inp.placeholder = i === 0 ? 'Your full name' : (g.max === 2 ? 'Your guest’s full name' : 'Guest ' + (i + 1) + ' full name');
       inp.setAttribute('aria-label', inp.placeholder);
-      nl.appendChild(inp);
+      seat.appendChild(inp);
+      var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role', 'radiogroup');
+      [['yes', 'Coming'], ['no', 'Can’t make it']].forEach(function (o) {
+        var lab = document.createElement('label'); lab.className = 'choice';
+        var r = document.createElement('input'); r.type = 'radio'; r.name = 'seat' + i; r.value = o[0];
+        r.addEventListener('change', toggleYes);
+        var sp = document.createElement('span'); sp.textContent = o[1];
+        lab.appendChild(r); lab.appendChild(sp); seg.appendChild(lab);
+      });
+      seat.appendChild(seg); nl.appendChild(seat);
     }
-    $('whoHint').hidden = g.max === 1;
+    $('whoHint').textContent = g.max === 1
+      ? 'Please let us know whether you can make it.'
+      : 'Choose Coming or Can’t make it for each person on your invitation.' + (g.max === 2 && !(g.names && g.names[1]) ? ' If you are bringing a guest, add their name.' : '');
+    toggleYes();
     $('respMsg').textContent = '';
     show('resp');
     $('hello').scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -530,25 +539,34 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
   });
 
   /* Step 2 */
-  function toggleYes() { $('yesFields').hidden = !$('attYes').checked; }
-  $('attYes').addEventListener('change', toggleYes);
-  $('attNo').addEventListener('change', toggleYes);
+  function seatStates() {
+    return Array.prototype.map.call($('nameList').querySelectorAll('.seat'), function (seat) {
+      var c = seat.querySelector('input[type=radio]:checked');
+      return { name: seat.querySelector('input[type=text]').value.trim(), choice: c ? c.value : '' };
+    });
+  }
+  function toggleYes() { $('yesFields').hidden = !seatStates().some(function (x) { return x.choice === 'yes'; }); }
   $('backBtn').addEventListener('click', function () { show('find'); });
+  function list(a) { return a.length < 3 ? a.join(' and ') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
 
   $('respForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    var yes = $('attYes').checked, no = $('attNo').checked;
-    if (!yes && !no) { $('respMsg').textContent = 'Please choose whether you will attend.'; return; }
-    var names = Array.prototype.map.call($('nameList').querySelectorAll('input'), function (i) { return i.value.trim(); })
-      .filter(function (n) { return n; });
-    if (yes && !names.length) { $('respMsg').textContent = 'Please enter the name of each person attending.'; return; }
+    var seats = seatStates().filter(function (x) { return x.name || x.choice; });
+    if (!seats.length || seats.some(function (x) { return !x.choice; })) { $('respMsg').textContent = 'Please choose Coming or Can’t make it for each person you have named.'; return; }
+    var going = seats.filter(function (x) { return x.choice === 'yes'; });
+    if (going.some(function (x) { return !x.name; })) { $('respMsg').textContent = 'Please enter the name of each person attending.'; return; }
+    var names = going.map(function (x) { return x.name; });
+    var out = seats.filter(function (x) { return x.choice === 'no' && x.name; }).map(function (x) { return x.name; });
+    var yes = names.length > 0;
     $('respMsg').textContent = '';
     $('sendBtn').disabled = true;
     var p = {
       action: 'rsvp', id: guest.id, q: $('lastName').value.trim(),
       response: yes ? 'yes' : 'no',
-      count: yes ? names.length : 0,
-      names: yes ? names.join('\n') : '',
+      count: names.length,
+      names: names.join('\n'),
+      attending: names.join('\n'),
+      declined: out.join('\n'),
       diet: yes ? $('diet').value.trim() : '',
       note: $('note').value.trim()
     };
@@ -557,11 +575,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
       if (!r || !r.ok) { $('respMsg').textContent = 'We could not save your response. Please try again.'; return; }
       $('thanks').textContent = yes ? 'See you there' : 'We will miss you';
       var s = $('summary'); s.textContent = '';
-      var line = document.createElement('div');
-      line.textContent = yes
-        ? (names.length < 3 ? names.join(' and ') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]) + ' attending Sunday, January 10, 2027.'
-        : guest.household + ': unable to attend. Thank you for letting us know.';
-      s.appendChild(line);
+      function add(t) { var d = document.createElement('div'); d.textContent = t; s.appendChild(d); }
+      if (yes) add(list(names) + ' attending Sunday, January 10, 2027.');
+      if (out.length) add(list(out) + (out.length > 1 ? ' are' : ' is') + ' unable to attend.');
+      if (!yes && !out.length) add(guest.household + ': unable to attend. Thank you for letting us know.');
       show('done');
       $('thanks').scrollIntoView({ block: 'center', behavior: 'smooth' });
     }).catch(function () {
