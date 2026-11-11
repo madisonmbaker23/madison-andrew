@@ -65,17 +65,18 @@ a { color: inherit; }
 
 /* Drifting photo band */
 .reel { --h: clamp(300px, 58vh, 540px); --gap: 14px; overflow: hidden; }
-.track { display: flex; width: max-content; will-change: transform; }
-.track.ready { animation: drift linear infinite; }
-.reel:hover .track { animation-play-state: paused; }
+.track { display: flex; width: max-content; }
 .set { display: flex; align-items: flex-end; gap: var(--gap); padding-right: var(--gap); }
 .set figure {
   margin: 0; flex: none; height: var(--h); aspect-ratio: 2 / 3;
   border-radius: 999px 999px 0 0; overflow: hidden; background: var(--beige);
 }
-.set figure:nth-child(even) { height: calc(var(--h) - 44px); }
+.set figure.short { height: calc(var(--h) - 44px); }
 .set img { width: 100%; height: 100%; object-fit: cover; }
-@keyframes drift { to { transform: translate3d(calc(var(--setw) * -1), 0, 0); } }
+/* Script-driven conveyor: each photo is its own small layer, so no giant strip is ever painted */
+.reel.js .track { display: block; width: auto; }
+.reel.js .set { display: block; position: relative; height: var(--h); padding: 0; }
+.reel.js .set figure { position: absolute; left: 0; bottom: 0; will-change: transform; }
 
 /* Invitation */
 .invite { text-align: center; padding-block: clamp(56px, 9vw, 112px) clamp(56px, 8vw, 96px); }
@@ -155,7 +156,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
   .row { grid-template-columns: 96px 1fr; }
   .bar .eyebrow { font-size: .62rem; letter-spacing: .26em; }
   .bar nav { gap: 18px; }
-  .set figure:nth-child(even) { height: calc(var(--h) - 32px); }
+  .set figure.short { height: calc(var(--h) - 32px); }
 }
 @media (max-width: 440px) {
   .choices { grid-template-columns: 1fr; }
@@ -163,7 +164,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .track.ready { animation: none; }
   .reel { overflow-x: auto; }
 }
 </style>
@@ -188,14 +188,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
 <section class="reel" aria-label="Photographs of Madison and Andrew">
   <div class="track">
     <div class="set">
-      <figure><img src="img/proposal.jpg" alt="Andrew kneeling with a ring as Madison smiles beside an open iron gate" fetchpriority="high"></figure>
-      <figure><img src="img/garden-walk.jpg" alt="Madison and Andrew walking hand in hand along a garden path"></figure>
-      <figure><img src="img/gate-walk.jpg" alt="Madison and Andrew holding hands, walking toward the water between iron gates"></figure>
-      <figure><img src="img/garden-stairs.jpg" alt="Madison and Andrew embracing at the foot of a garden staircase"></figure>
-      <figure><img src="img/gate-dance.jpg" alt="Andrew twirling Madison beside an open iron gate above the water"></figure>
+      <figure><img src="img/garden-kiss.jpg" alt="Madison and Andrew kissing on a garden staircase" fetchpriority="high"></figure>
+      <figure class="short"><img src="img/steps.jpg" alt="Madison and Andrew smiling as they climb the stone steps"></figure>
       <figure><img src="img/garden-embrace.jpg" alt="Madison and Andrew foreheads touching on a garden path"></figure>
-      <figure><img src="img/steps.jpg" alt="Madison and Andrew smiling as they climb the stone steps"></figure>
-      <figure><img src="img/garden-kiss.jpg" alt="Madison and Andrew kissing on a garden staircase"></figure>
+      <figure class="short"><img src="img/gate-dance.jpg" alt="Andrew twirling Madison beside an open iron gate above the water"></figure>
+      <figure><img src="img/garden-stairs.jpg" alt="Madison and Andrew embracing at the foot of a garden staircase"></figure>
+      <figure class="short"><img src="img/gate-walk.jpg" alt="Madison and Andrew holding hands, walking toward the water between iron gates"></figure>
+      <figure><img src="img/garden-walk.jpg" alt="Madison and Andrew walking hand in hand along a garden path"></figure>
+      <figure class="short"><img src="img/proposal.jpg" alt="Andrew kneeling with a ring as Madison smiles beside an open iron gate"></figure>
     </div>
   </div>
 </section>
@@ -305,30 +305,72 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
 </footer>
 
 <script>
-/* Photo band: copy the strip as many times as the screen needs so it loops with no gap. */
+/* Photo band: a conveyor. Each photo is moved on its own and wraps from the left edge to the
+   right end, so the first photo always follows the last with no gap on any screen width. */
 (function () {
-  var track = document.querySelector('.track');
-  var first = track && track.querySelector('.set');
-  if (!first) return;
-  var timer;
-  function build() {
-    track.querySelectorAll('.set.clone').forEach(function (n) { n.remove(); });
-    var w = first.getBoundingClientRect().width;
-    if (!w) return;
-    var copies = Math.ceil(window.innerWidth / w) + 1;
-    for (var i = 0; i < copies; i++) {
-      var c = first.cloneNode(true);
-      c.classList.add('clone');
-      c.setAttribute('aria-hidden', 'true');
-      c.querySelectorAll('img').forEach(function (m) { m.alt = ''; m.removeAttribute('fetchpriority'); });
-      track.appendChild(c);
-    }
-    track.style.setProperty('--setw', w + 'px');
-    track.style.animationDuration = Math.round(w / 38) + 's';
-    track.classList.add('ready');
+  var reel = document.querySelector('.reel');
+  var set = reel && reel.querySelector('.set');
+  if (!set) return;
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var originals = Array.prototype.slice.call(set.children);
+  var SPEED = 38; /* pixels per second */
+  var items = [], L = 0, T = 0, maxW = 0, offset = 0, last = 0, raf = 0, paused = false, lastWidth = 0, timer;
+
+  function teardown() {
+    cancelAnimationFrame(raf); raf = 0;
+    reel.classList.remove('js');
+    items.forEach(function (it) { if (it.clone) it.el.remove(); else it.el.style.transform = ''; });
+    items = [];
   }
-  build();
-  window.addEventListener('resize', function () { clearTimeout(timer); timer = setTimeout(build, 250); });
+
+  function frame(t) {
+    var dt = Math.min(0.1, (t - last) / 1000); last = t;
+    if (!paused) offset = (offset + SPEED * dt) % L;
+    for (var i = 0; i < items.length; i++) {
+      var x = ((items[i].x - offset + maxW) % T + T) % T - maxW;
+      items[i].el.style.transform = 'translate3d(' + x.toFixed(1) + 'px,0,0)';
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function setup() {
+    teardown();
+    lastWidth = reel.clientWidth;
+    if (still.matches) return;
+    var gap = parseFloat(getComputedStyle(set).columnGap) || 14;
+    var base = originals.map(function (el) { return { el: el, x: el.offsetLeft, w: el.offsetWidth }; });
+    var x0 = base[0].x, end = base[base.length - 1];
+    L = end.x - x0 + end.w + gap;
+    maxW = Math.max.apply(null, base.map(function (b) { return b.w; }));
+    var copies = Math.max(1, Math.ceil((lastWidth + 2 * maxW) / L));
+    T = copies * L;
+    reel.classList.add('js');
+    for (var j = 0; j < copies; j++) {
+      base.forEach(function (b) {
+        var el = b.el;
+        if (j > 0) {
+          el = b.el.cloneNode(true);
+          el.setAttribute('aria-hidden', 'true');
+          var img = el.querySelector('img');
+          img.alt = ''; img.removeAttribute('fetchpriority');
+          set.appendChild(el);
+        }
+        items.push({ el: el, x: b.x - x0 + j * L, clone: j > 0 });
+      });
+    }
+    items.forEach(function (it) { var m = it.el.querySelector('img'); if (m.decode) m.decode().catch(function () {}); });
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+
+  reel.addEventListener('mouseenter', function () { paused = true; });
+  reel.addEventListener('mouseleave', function () { paused = false; });
+  window.addEventListener('resize', function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () { if (reel.clientWidth !== lastWidth) setup(); }, 250);
+  });
+  if (still.addEventListener) still.addEventListener('change', setup);
+  setup();
 })();
 </script>
 <script src="config.js"></script>
