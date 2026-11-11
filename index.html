@@ -77,6 +77,9 @@ a { color: inherit; }
 .reel.js .track { display: block; width: auto; }
 .reel.js .set { display: block; position: relative; height: var(--h); padding: 0; }
 .reel.js .set figure { position: absolute; left: 0; bottom: 0; will-change: transform; }
+.reel.js { cursor: grab; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.reel.js.drag { cursor: grabbing; }
+.reel.js img { pointer-events: none; -webkit-user-drag: none; }
 
 /* Invitation */
 .invite { text-align: center; padding-block: clamp(44px, 8vw, 104px) clamp(56px, 8vw, 96px); }
@@ -338,7 +341,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
   var still = window.matchMedia('(prefers-reduced-motion: reduce)');
   var originals = Array.prototype.slice.call(set.children);
   var SPEED = 38; /* pixels per second */
-  var items = [], L = 0, T = 0, maxW = 0, offset = 0, last = 0, raf = 0, paused = false, lastWidth = 0, timer;
+  var IDLE = 2000; /* ms without touching it before it drifts again */
+  var items = [], L = 0, T = 0, maxW = 0, offset = 0, last = 0, raf = 0, lastWidth = 0, timer;
+  var dragging = false, lastInput = -1e9, vel = 0, autoF = 1, dragX = 0, dragT = 0;
 
   function teardown() {
     cancelAnimationFrame(raf); raf = 0;
@@ -349,7 +354,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
 
   function frame(t) {
     var dt = Math.min(0.1, (t - last) / 1000); last = t;
-    if (!paused) offset = (offset + SPEED * dt) % L;
+    var idle = !dragging && (t - lastInput) > IDLE;
+    autoF += ((idle ? 1 : 0) - autoF) * Math.min(1, dt * 3); /* ease back into drifting */
+    if (!dragging) { offset += vel * dt; vel *= Math.exp(-dt * 4); if (Math.abs(vel) < 1) vel = 0; }
+    offset = (((offset + SPEED * autoF * dt) % L) + L) % L;
     for (var i = 0; i < items.length; i++) {
       var x = ((items[i].x - offset + maxW) % T + T) % T - maxW;
       items[i].el.style.transform = 'translate3d(' + x.toFixed(1) + 'px,0,0)';
@@ -387,8 +395,38 @@ input:focus, select:focus, textarea:focus { outline: none; border-bottom-color: 
     raf = requestAnimationFrame(frame);
   }
 
-  reel.addEventListener('mouseenter', function () { paused = true; });
-  reel.addEventListener('mouseleave', function () { paused = false; });
+  /* Viewers can drag, swipe, use a trackpad or arrow keys; it drifts again after IDLE ms of stillness. */
+  function touched() { lastInput = performance.now(); }
+  reel.tabIndex = 0;
+  reel.addEventListener('pointerdown', function (e) {
+    if (!items.length || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    dragging = true; vel = 0; dragX = e.clientX; dragT = performance.now(); touched();
+    reel.classList.add('drag');
+    try { reel.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  reel.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    var now = performance.now(), dx = e.clientX - dragX, dts = Math.max(1, now - dragT);
+    offset -= dx; vel = vel * 0.6 + (-dx / dts * 1000) * 0.4;
+    dragX = e.clientX; dragT = now; touched();
+  });
+  function release() {
+    if (!dragging) return;
+    dragging = false; reel.classList.remove('drag'); touched();
+    if (performance.now() - dragT > 80) vel = 0;
+  }
+  reel.addEventListener('pointerup', release);
+  reel.addEventListener('pointercancel', release);
+  reel.addEventListener('lostpointercapture', release);
+  reel.addEventListener('wheel', function (e) {
+    var dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
+    if (!dx || !items.length) return; /* plain vertical scrolling still moves the page */
+    e.preventDefault(); offset += dx; vel = 0; touched();
+  }, { passive: false });
+  reel.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') { offset += 160; touched(); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') { offset -= 160; touched(); e.preventDefault(); }
+  });
   window.addEventListener('resize', function () {
     clearTimeout(timer);
     timer = setTimeout(function () { if (reel.clientWidth !== lastWidth) setup(); }, 250);
